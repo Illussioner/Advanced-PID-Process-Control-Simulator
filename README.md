@@ -167,3 +167,9 @@ Indian Institute of Technology (BHU), Varanasi
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+# 🚀 Advanced PID Process Control Simulator
+
+![Python](https://img.shields.io/badge/Python-3.14-blue?logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-App-red?logo=streamlit)
+![License](https://img.shields.io/badge/License-MIT-green)
