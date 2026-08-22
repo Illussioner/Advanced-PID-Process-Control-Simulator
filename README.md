@@ -75,7 +75,7 @@ Advanced-PID-Process-Control-Simulator/
 Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Advanced-PID-Process-Control-Simulator.git
+git clone https://github.com/Illussioner/Advanced-PID-Process-Control-Simulator.git
 ```
 
 Move into the project directory
