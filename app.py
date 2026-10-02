@@ -110,14 +110,14 @@ if use_different_comparision:
         )
 
         num_poly_old = sp.Poly(numerator_old, s)
-        den_poly_old = sp.Polyd(denominator_old, s)
+        den_poly_old = sp.Poly(denominator_old, s)
 
         num_coeffs_old = [
             float(c) for c in num_poly_old.all_coeffs()
         ]
 
         den_coeffs_old = [
-            float(c) for c in den_poly_old.all_coeff()
+            float(c) for c in den_poly_old.all_coeffs()
         ]
 
         comparision_plant = ctrl.TransferFunction(
