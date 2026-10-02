@@ -2,6 +2,7 @@ import streamlit as st
 import control as ctrl
 import matplotlib.pyplot as plt
 import numpy as np
+import sympy as sp
 import io
 from datetime import datetime
 
@@ -10,17 +11,50 @@ st.title("PID Process Control Simulator")
 # Plant Transfer Function/ Process Selection
 process = st.sidebar.selectbox(
     "Process Type",
-    ["Tank Level", "Heat Exchanger", "Flow Control"]
+    ["Tank Level", "Heat Exchanger", "Flow Control","Custom"]
 )
 
 if process == "Tank Level":
     plant = ctrl.TransferFunction([1], [10, 1])
+    main_equation = "1 / (10*s + 1)"
 
 elif process == "Heat Exchanger":
     plant = ctrl.TransferFunction([2], [8, 1])
+    main_equation = "2 / (8*s + 1)"
+
+elif process == "Flow Control":
+    plant = ctrl.TransferFunction([3], [2, 1])
+    main_equation = "3 / (2*s + 1)"
 
 else:
-    plant = ctrl.TransferFunction([3], [2, 1])
+    main_equation = st.sidebar.text_input(
+        "Enter Transfer Function",
+        value="1 / (10*s + 1)",
+        help="Use s as the Laplace variable. Example: 1/(5*s+1)"
+    )
+
+    try:
+        s = sp.symbols("s")
+        equation = sp.sympify(
+            main_equation.replace("^", "**"),
+            locals={"s":s}
+        )
+
+        numerator, denominator = sp.fraction(sp.cancel(equation))
+
+        num_poly = sp.Poly(numerator, s)
+        den_poly = sp.Poly(denominator, s)
+
+        num_coeffs = [float(c) for c in num_poly.all_coeffs()]
+        den_coeffs = [float(c) for c in den_poly.all_coeffs()]
+
+        plant = ctrl.TransferFunction(num_coeffs,den_coeffs)
+
+    except Exception:
+        st.error(
+            "Invalid transfer function. Example: 1/(10*s+1)"
+        )
+        st.stop()
 
 # setpoint 
 
@@ -45,6 +79,58 @@ st.sidebar.header("Comparison PID")
 kp_old = st.sidebar.number_input("Old Kp", value=1.0)
 ki_old = st.sidebar.number_input("Old Ki", value=0.5)
 kd_old = st.sidebar.number_input("Old Kd", value=0.2)
+
+# Different comparision plant
+use_different_comparision = st.sidebar.checkbox(
+    "Use different equation for comparision",
+    value = False
+)
+
+comparision_plant = plant
+comparision_equation = main_equation
+
+if use_different_comparision:
+
+    comparision_equation = st.sidebar.text_input(
+        "Comparision Transfer Function",
+        value = main_equation,
+        help = "Example: 2/(5*s+1)"
+    )
+
+    try:
+        s = sp.symbols("s")
+
+        comparision_expr = sp.sympify(
+            comparision_equation.replace("^", "**"),
+            locals={"s":s}
+        )
+
+        numerator_old, denominator_old = sp.fraction(
+            sp.cancel(comparision_expr)
+        )
+
+        num_poly_old = sp.Poly(numerator_old, s)
+        den_poly_old = sp.Polyd(denominator_old, s)
+
+        num_coeffs_old = [
+            float(c) for c in num_poly_old.all_coeffs()
+        ]
+
+        den_coeffs_old = [
+            float(c) for c in den_poly_old.all_coeff()
+        ]
+
+        comparision_plant = ctrl.TransferFunction(
+            num_coeffs_old,
+            den_coeffs_old
+        )
+
+    except Exception:
+        st.error(
+            "Invalid comparision transfer function. "
+            "Example: 2/(5*s+1)"
+        )
+        st.stop()
 
 st.sidebar.header("Disturbance")
 
@@ -71,7 +157,7 @@ controller_old = ctrl.TransferFunction(
 # Closed Loop System
 closed_loop = ctrl.feedback(controller * plant)
 
-closed_loop_old = ctrl.feedback(controller_old * plant)
+closed_loop_old = ctrl.feedback(controller_old * comparision_plant)
 
 # Step Response
 t, y = ctrl.step_response(closed_loop)
@@ -80,8 +166,6 @@ t_old, y_old = ctrl.step_response(closed_loop_old)
 # Scale responses according to setpoint
 y *= setpoint
 y_old *= setpoint
-
-import numpy as np
 
 if enable_disturbance:
 
@@ -96,7 +180,10 @@ fig, ax = plt.subplots()
 ax.plot(t, y, label="Current PID")
 ax.plot(t_old, y_old, label="Comparison PID")
 ax.legend()
-ax.set_title(f"{process} - PID Response Comparison")
+if use_different_comparision:
+    ax.set_title("Transfer Function & PID Response Comparision")
+else:
+    ax.set_title(f"{process} - PID Response Comparison")
 ax.set_xlabel("Time (s)")
 ax.set_ylabel("Output")
 ax.grid(True)
@@ -249,10 +336,16 @@ summary = f"""
 
 **Target Setpoint:** {setpoint:.1f}
 
+**Current Plant**
+- Transfer Function = '{main_equation}'
+
 **Current PID**
 - Kp = {kp:.2f}
 - Ki = {ki:.2f}
 - Kd = {kd:.2f}
+
+**Comparision Plant**
+-Transfer Function = '{comparision_equation}'
 
 **Comparison PID**
 - Kp = {kp_old:.2f}
